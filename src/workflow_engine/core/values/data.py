@@ -76,9 +76,8 @@ def get_data_dict(data: Data) -> Mapping[str, Value]:
 
 def get_data_schema(cls: type[Data]) -> "ValueSchema":
     from .schema import validate_value_schema  # avoid circular import
-    from .value import model_json_schema_without_docstring
 
-    return validate_value_schema(model_json_schema_without_docstring(cls))
+    return validate_value_schema(cls.model_json_schema())
 
 
 def get_field_annotations(cls: type[Data]) -> Mapping[str, type[Value]]:

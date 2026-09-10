@@ -13,7 +13,7 @@ from pydantic import ConfigDict, Field, ValidationError, model_validator
 from ..utils.asynchronous import gather
 from ..utils.model import ImmutableBaseModel
 from .edge import Edge
-from .error import ErrorClass, NodeException, NodeExpansionException, WorkflowException
+from .error import NodeException, NodeExpansionException, WorkflowException
 from .io import InputNode, OutputNode
 from .node import Node, get_id_with_namespace
 from .values import (
@@ -131,20 +131,6 @@ class Workflow(ImmutableBaseModel):
             inner_nodes=[node.with_namespace(namespace) for node in self.inner_nodes],
             output_node=self.output_node.with_namespace(namespace),
             edges=[edge.with_namespace(namespace) for edge in self.edges],
-        )
-
-    def without_hints(self) -> Self:
-        """
-        Create a copy of this workflow with every node's hints erased.
-
-        This is the executable form of the hints contract: running a
-        workflow and running ``workflow.without_hints()`` must produce the
-        same result, since a host is always allowed to ignore every hint.
-        """
-        return self.model_update(
-            input_node=self.input_node.without_hints(),
-            inner_nodes=[node.without_hints() for node in self.inner_nodes],
-            output_node=self.output_node.without_hints(),
         )
 
     # NOTE: this clobbers a long-deprecated method of the same name by Pydantic but we don't care
@@ -351,7 +337,6 @@ class ValidatedWorkflow(Workflow):
                 raise NodeException.for_user(
                     f"Input {node_input} for node {node.id} is invalid: {e}",
                     node=node,
-                    error_class=ErrorClass.VALIDATION,
                 ) from e
         return ready_nodes
 

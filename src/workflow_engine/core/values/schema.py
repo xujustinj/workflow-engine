@@ -309,19 +309,8 @@ class BaseValueSchema(ImmutableBaseModel):
         """
         Builds a Pydantic class from this schema. References, if any, are
         resolved using self.defs first, then any extra_defs in order of decreasing precedence.
-
-        Only reached for the catch-all ``Any`` shape (a bare
-        ``BaseValueSchema``): every other member of the ``ValueSchema`` union
-        overrides this method. That shape is also what a schema falls back to
-        when it fails to match any of the more specific members, e.g. a bare
-        ``items: {}``, ``additionalProperties: {}``, ``{}``, or a leaked
-        ``oneOf``. Name the offending schema in the error, rather than raising
-        a bare message that gives no clue which call produced it.
         """
-        raise NotImplementedError(
-            f"Cannot build a value class: schema matched no known "
-            f"ValueSchema shape: {self!r}"
-        )
+        raise NotImplementedError("Subclasses must implement this method")
 
     def to_field_info(
         self,
@@ -438,43 +427,16 @@ class DateValueSchema(BaseValueSchema):
         return DateValue
 
 
-class ResultValueSchema(BaseValueSchema):
-    """
-    Matches the wire shape published by ``Result[T].to_value_schema()``: a
-    tagged object with sibling ``ok`` / ``err`` members. ``ok`` and ``err``
-    are the *type* schemas for each arm (``err`` is always ``ResultError``'s
-    schema); the serialized *value* carries a ``tag`` plus exactly one
-    populated payload. See docs/values.md for the full wire contract.
-    """
-
-    type: Final[Literal["object"]]
-    ok: ValueSchema
-    err: ValueSchema
-
-    @override
-    def build_value_cls(
-        self,
-        *extra_defs: Mapping[str, ValueSchema],
-    ) -> ValueType:
-        from .result import result_value_type
-
-        item_type = self.ok.to_value_cls(self.defs, *extra_defs)
-        return result_value_type(item_type)
-
-
 class SequenceValueSchema(BaseValueSchema):
     type: Final[Literal["array"]]
-    items: ValueSchema | Literal[True] = True
+    items: ValueSchema
 
     @override
     def build_value_cls(
         self,
         *extra_defs: Mapping[str, ValueSchema],
     ) -> type[SequenceValue]:
-        if self.items is True:
-            T = Value
-        else:
-            T = self.items.to_value_cls(self.defs, *extra_defs)
+        T = self.items.to_value_cls(self.defs, *extra_defs)
         extras = dict(self.model_extra or {})
         if not extras:
             return SequenceValue[T]
@@ -621,7 +583,6 @@ type ValueSchema = (
     | FloatValueSchema
     | IntegerValueSchema
     | NullValueSchema
-    | ResultValueSchema
     | SequenceValueSchema
     | StringMapValueSchema
     | StringValueSchema
@@ -675,7 +636,6 @@ __all__ = [
     "IntegerValueSchema",
     "NullValueSchema",
     "ReferenceValueSchema",
-    "ResultValueSchema",
     "SequenceValueSchema",
     "StringMapValueSchema",
     "StringValueSchema",

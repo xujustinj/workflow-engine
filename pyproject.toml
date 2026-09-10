@@ -1,6 +1,6 @@
 [project]
 name = "aceteam-workflow-engine"
-version = "2.0.0rc16"
+version = "2.0.0rc15"
 description = "A powerful workflow orchestration engine for composing complex computational tasks from modular, type-safe nodes"
 readme = "README.md"
 license = "LicenseRef-Elastic-2.0"
@@ -23,6 +23,7 @@ keywords = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
@@ -54,7 +55,6 @@ Input = "workflow_engine.core.io:InputNode"
 Output = "workflow_engine.core.io:OutputNode"
 AbsoluteValue = "workflow_engine.nodes.arithmetic:AbsoluteValueNode"
 Add = "workflow_engine.nodes.arithmetic:AddNode"
-AllOk = "workflow_engine.nodes.result:AllOkNode"
 And = "workflow_engine.nodes.comparison:AndNode"
 AppendToFile = "workflow_engine.nodes.text:AppendToFileNode"
 ConstantBoolean = "workflow_engine.nodes.constant:ConstantBooleanNode"
@@ -67,7 +67,6 @@ ExpandData = "workflow_engine.nodes.data:ExpandDataNode"
 ExpandMapping = "workflow_engine.nodes.data:ExpandMappingNode"
 ExpandSequence = "workflow_engine.nodes.data:ExpandSequenceNode"
 Factorization = "workflow_engine.nodes.arithmetic:FactorizationNode"
-FirstError = "workflow_engine.nodes.result:FirstErrorNode"
 ForEach = "workflow_engine.nodes.iteration:ForEachNode"
 GatherData = "workflow_engine.nodes.data:GatherDataNode"
 GatherMapping = "workflow_engine.nodes.data:GatherMappingNode"
@@ -86,12 +85,10 @@ Not = "workflow_engine.nodes.comparison:NotNode"
 NotEqual = "workflow_engine.nodes.comparison:NotEqualNode"
 Now = "workflow_engine.nodes.datetime:NowNode"
 Or = "workflow_engine.nodes.comparison:OrNode"
-Partition = "workflow_engine.nodes.result:PartitionNode"
 Power = "workflow_engine.nodes.arithmetic:PowerNode"
 Round = "workflow_engine.nodes.arithmetic:RoundNode"
 Subtract = "workflow_engine.nodes.arithmetic:SubtractNode"
 Sum = "workflow_engine.nodes.arithmetic:SumNode"
-UnwrapOr = "workflow_engine.nodes.result:UnwrapOrNode"
 
 [project.urls]
 Homepage = "https://aceteam.ai/workflow-engine"

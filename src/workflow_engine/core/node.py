@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from functools import cached_property
 from typing import (
     TYPE_CHECKING,
@@ -20,14 +20,7 @@ from typing import (
 )
 
 from overrides import final, override
-from pydantic import (
-    ConfigDict,
-    Field,
-    SerializerFunctionWrapHandler,
-    ValidationError,
-    model_serializer,
-    model_validator,
-)
+from pydantic import ConfigDict, Field, ValidationError, model_validator
 from typing_extensions import overload
 
 from ..utils.asynchronous import gather
@@ -38,8 +31,7 @@ from ..utils.semver import (
     SEMANTIC_VERSION_PATTERN,
     parse_semantic_version,
 )
-from .error import ErrorClass, NodeException, ShouldYield, WorkflowException
-from .hints import Hints
+from .error import NodeException, ShouldYield, WorkflowException
 from .values import (
     Data,
     DataMapping,
@@ -86,27 +78,6 @@ class Empty(Params):
     pass
 
 
-class DeclaredError(ImmutableBaseModel):
-    """
-    Documents one error ``name`` a node type may raise into a ``Result``
-    err arm. See ``NodeTypeInfo.declared_errors`` for what this is and, just
-    as importantly, is not.
-    """
-
-    name: str = Field(
-        description="The short, machine-readable name this node type may "
-        "raise, matching ResultError.name (core/values/result.py) on the wire."
-    )
-    error_class: ErrorClass = Field(
-        description="The error_class this name is expected to carry by "
-        "default. Not wire-enforced: the value actually carried on the "
-        "wire is whatever the raise site set, or systemic if it set none."
-    )
-    description: str = Field(
-        description="A human-readable description of when this error occurs."
-    )
-
-
 class NodeTypeInfo(ImmutableBaseModel):
     """
     Information about a node type, in serializable form.
@@ -131,18 +102,6 @@ class NodeTypeInfo(ImmutableBaseModel):
         description="Maximum number of retry attempts for this node type. "
         "None means use the execution algorithm's default.",
     )
-    declared_errors: Sequence[DeclaredError] = Field(
-        default=(),
-        description="The error names this node type may raise into a "
-        "Result err arm, each with a default error_class and a "
-        "description. Documentation only: a name absent here is still "
-        "valid on the wire (ResultError.name is an open StringValue, "
-        "unchanged by this field), and adding a name here is not a "
-        "schema change. Optional and non-exhaustive by construction, "
-        "on purpose: see #234 for why enforcing declared-only names "
-        "would recreate the versioning problem that field is designed "
-        "to avoid.",
-    )
 
     @cached_property
     def version_tuple(self) -> tuple[int, int, int]:
@@ -157,7 +116,6 @@ class NodeTypeInfo(ImmutableBaseModel):
         version: str,
         parameter_type: type[Params],
         max_retries: int | None = None,
-        declared_errors: Sequence[DeclaredError] = (),
     ) -> Self:
         return cls(
             display_name=display_name,
@@ -165,7 +123,6 @@ class NodeTypeInfo(ImmutableBaseModel):
             version=version,
             parameter_schema=get_data_schema(parameter_type),
             max_retries=max_retries,
-            declared_errors=declared_errors,
         )
 
 
@@ -216,14 +173,6 @@ class Node(ImmutableBaseModel, Generic[Input_contra, Output, Params_co]):
         description=(
             "Any parameters for the node which are independent of the workflow inputs. "
             "May affect what inputs are accepted by the node."
-        ),
-    )
-    hints: Hints = Field(
-        default_factory=Hints,
-        description=(
-            "Host-facing annotations for this node. A host may honor, clamp, "
-            "or ignore any hint; unlike params, hints never affect the "
-            "node's input/output types or the workflow's result."
         ),
     )
 
@@ -286,33 +235,6 @@ class Node(ImmutableBaseModel, Generic[Input_contra, Output, Params_co]):
             A new Node with ID '{namespace}/{self.id}'
         """
         return self.model_update(id=get_id_with_namespace(self.id, namespace))
-
-    # --------------------------------------------------------------------------
-    # HINTS
-
-    def without_hints(self) -> Self:
-        """
-        Create a copy of this node with all hints erased.
-
-        Used to test and demonstrate the hints contract: a workflow built
-        from nodes with ``without_hints()`` applied must produce the same
-        result as the original, since a host is always allowed to ignore
-        every hint.
-        """
-        return self.model_update(hints=Hints())
-
-    @model_serializer(mode="wrap")
-    def _serialize_omit_empty_hints(self, handler: SerializerFunctionWrapHandler):
-        """
-        Omit the ``hints`` key entirely when it carries nothing (i.e. it
-        serializes the same as a bare ``Hints()``), so a node that has never
-        touched this channel dumps exactly as it did before the channel
-        existed. A node with a real hint set is unaffected.
-        """
-        data = handler(self)
-        if not data.get("hints"):
-            data.pop("hints", None)
-        return data
 
     # --------------------------------------------------------------------------
     # VERSIONING
@@ -512,7 +434,6 @@ class Node(ImmutableBaseModel, Generic[Input_contra, Output, Params_co]):
                     raise NodeException.for_user(
                         f"Input {input} for node {self.id} is invalid: {e}",
                         node=self,
-                        error_class=ErrorClass.VALIDATION,
                     ) from e
                 casted_input = get_data_dict(input_obj)
                 output = await context.on_node_start(
@@ -1088,7 +1009,6 @@ NodeRegistry.DEFAULT = NodeRegistry.builder(lazy=True)
 
 
 __all__ = [
-    "DeclaredError",
     "Empty",
     "Node",
     "NodeTypeInfo",
