@@ -4,7 +4,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta, timezone
-from enum import StrEnum
 from traceback import format_exception
 from typing import TYPE_CHECKING, Self
 
@@ -18,26 +17,6 @@ if TYPE_CHECKING:
     from .workflow import Workflow
 
 
-class ErrorClass(StrEnum):
-    """
-    The closed-vocabulary, machine-readable classification of an error.
-
-    A single field lets callers key retry policy, circuit breakers, and a run
-    ledger off of one vocabulary instead of three. Defined here (rather than
-    in ``core/values/result.py``, where it originated) because
-    ``WorkflowException`` needs it and ``core/error.py`` must not import
-    ``core/values``; ``values/result.py`` re-exports it so the wire shape and
-    public import path are unchanged.
-    """
-
-    TIMEOUT = "timeout"
-    UNREACHABLE = "unreachable"
-    RATE_LIMIT = "rate_limit"
-    VALIDATION = "validation"
-    PERMISSION = "permission"
-    SYSTEMIC = "systemic"
-
-
 class WorkflowError(ImmutableBaseModel):
     """
     A serialized workflow exception.
@@ -49,7 +28,6 @@ class WorkflowError(ImmutableBaseModel):
     node_id: str | None = Field(default=None)
     cause: WorkflowError | str | None = Field(default=None)
     traceback: Sequence[str] | None = Field(default=None)
-    error_class: ErrorClass | None = Field(default=None)
 
     def filter(self, level: StakeholderLevel) -> Self | None:
         # remove errors that require a lower level of visibility to be seen
@@ -77,14 +55,12 @@ class WorkflowException(RuntimeError):
         *,
         level: StakeholderLevel,
         node_id: str | None = None,
-        error_class: ErrorClass | None = None,
     ):
         super().__init__(message)
         self.timestamp = datetime.now(timezone.utc).timestamp()
         self.level = level
         self.message = message
         self.node_id = node_id
-        self.error_class = error_class
 
     def dump(self) -> WorkflowError:
         return WorkflowError(
@@ -100,7 +76,6 @@ class WorkflowException(RuntimeError):
                 else str(self.__cause__)
             ),
             traceback=format_exception(self),
-            error_class=self.error_class,
         )
 
     @classmethod
@@ -175,9 +150,8 @@ class NodeException(WorkflowException):
         *,
         node: "Node",
         level: StakeholderLevel,
-        error_class: ErrorClass | None = None,
     ):
-        super().__init__(message, level=level, node_id=node.id, error_class=error_class)
+        super().__init__(message, level=level, node_id=node.id)
         self.node = node
 
     @classmethod
@@ -271,14 +245,6 @@ class ShouldRetry(NodeException):
     Retrying a node that raised ShouldRetry is always a courtesy of the
     execution algorithm.
     If refused, the error passes up uncaught as a regular NodeException.
-
-    ``error_class`` defaults to ``SYSTEMIC`` rather than ``None``. A retry
-    policy (see #205) reads ``error_class`` straight off this exception via
-    the ``on_node_retry`` hook, before any boundary ever gets a chance to
-    null-coalesce a missing value to ``SYSTEMIC`` the way
-    ``result_error_from_exception`` does. A raise site that genuinely does
-    not know why the attempt failed, only that it is worth retrying, should
-    say so plainly rather than carry ``None`` into that policy check.
     """
 
     def __init__(
@@ -288,9 +254,8 @@ class ShouldRetry(NodeException):
         node: "Node",
         level: StakeholderLevel,
         backoff: timedelta = timedelta(seconds=1),
-        error_class: ErrorClass = ErrorClass.SYSTEMIC,
     ):
-        super().__init__(message, node=node, level=level, error_class=error_class)
+        super().__init__(message, node=node, level=level)
         self.backoff = backoff
 
 
@@ -454,7 +419,6 @@ class WorkflowErrorsBuilder:
 
 
 __all__ = [
-    "ErrorClass",
     "LegacyWorkflowErrors",
     "NodeException",
     "NodeExpansionException",

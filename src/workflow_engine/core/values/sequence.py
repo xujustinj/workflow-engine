@@ -1,22 +1,14 @@
 # workflow_engine/core/values/sequence.py
 
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast
-
-from overrides import override
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 from ...utils.asynchronous import gather
 from .primitives import IntegerValue
-from .value import (
-    Caster,
-    Value,
-    get_origin_and_args,
-    model_json_schema_without_docstring,
-)
+from .value import Caster, Value, get_origin_and_args
 
 if TYPE_CHECKING:
     from ..context import ExecutionContext
-    from .schema import ValueSchema
 
 T = TypeVar("T", bound=Value)
 
@@ -37,54 +29,6 @@ class SequenceValue(Value[Sequence[T]], Generic[T]):
 
     def __contains__(self, item: Any) -> bool:
         return any(x == item for x in self.root)
-
-    @classmethod
-    @override
-    def to_value_schema(cls) -> "ValueSchema":
-        """
-        Delegates to the item type's own ``to_value_schema()`` instead of
-        trusting Pydantic's ``model_json_schema()`` to describe the item.
-
-        The generic default (``Value.to_value_schema()``) embeds whatever raw
-        JSON Schema Pydantic generates for the item type. That is correct for
-        item types with no custom ``to_value_schema()`` (Pydantic's schema and
-        ours coincide), but wrong for item types like ``Result[T]`` that
-        publish a different wire shape than their raw Pydantic schema: the
-        embedded ``$ref`` then points at something ``validate_value_schema()``
-        cannot rebuild. Calling ``item_type.to_value_schema()`` directly keeps
-        the two in sync at every nesting depth, the same way ``Result[T]``
-        already delegates to its own item type.
-
-        Constraints (``minItems``/``maxItems``) and any other schema-level
-        extras still come from ``model_json_schema()``, since those describe
-        this sequence itself, not its item type.
-
-        ``SequenceValue[Value]`` (the fully-open sequence, used when a
-        schema's ``items`` is bare ``True``) has no concrete item type to
-        delegate to, so it round-trips as ``items: True`` directly, matching
-        ``SequenceValueSchema.build_value_cls()``.
-        """
-        from .schema import SequenceValueSchema
-
-        _origin, args = get_origin_and_args(cls)
-        if not args:
-            # Bare, unparameterized SequenceValue: no item type to delegate to.
-            return super().to_value_schema()
-        (item_type,) = args
-
-        raw = dict(model_json_schema_without_docstring(cls))
-        raw.pop("$defs", None)
-        raw.pop("items", None)
-
-        items: "ValueSchema | Literal[True]" = (
-            True if item_type is Value else item_type.to_value_schema()
-        )
-
-        return SequenceValueSchema(
-            **raw,
-            items=items,
-            value_type=cls.__name__,
-        )
 
 
 SourceType = TypeVar("SourceType", bound=Value)

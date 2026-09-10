@@ -1,11 +1,11 @@
 {
   "name": "wengine",
-  "version": "2.0.0rc16",
+  "version": "2.0.0rc15",
   "description": "Skill for exploring, composing, validating, and running typed workflows via the wengine CLI from aceteam-workflow-engine.",
   "author": {
     "name": "AceTeam"
   },
   "homepage": "https://github.com/aceteam-ai/workflow-engine",
   "repository": "https://github.com/aceteam-ai/workflow-engine",
-  "license": "LicenseRef-Elastic-2.0"
+  "license": "MIT"
 }

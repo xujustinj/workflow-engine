@@ -2,9 +2,9 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/aceteam-workflow-engine)](https://pypi.org/project/aceteam-workflow-engine/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/)
-[![License: Elastic License 2.0](https://img.shields.io/badge/license-Elastic%20License%202.0-blue)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-A powerful, modular workflow orchestration system designed for composing complex computational tasks from smaller, configurable steps. This engine powers the workflow functionality in [AceTeam.ai](https://aceteam.ai/workflow-engine).
+A powerful, modular workflow orchestration system designed for composing complex computational tasks from smaller, configurable steps. This engine powers the workflow functionality in [AceTeam.ai](https://aceteam.ai/workflow-engine) and is now available as an open-source package.
 
 ## Overview
 
@@ -162,7 +162,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## License
 
-[Elastic License 2.0](LICENSE)
+[MIT License](LICENSE)
 
 ## About
 
